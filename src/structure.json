@@ -1,15 +1,94 @@
-'{' 
-'  "module": "authentication",' 
-'  "version": "1.0.0",' 
-'  "input_schemas": {' 
-'    "login_request": {' 
-'     "email": "string",' 
-'     "password": "string",' 
-'    }' 
-' },' 
-'  "output_schemas": {' 
-'    "login_response": {' 
-'      "access_token": "string"' 
-'    }' 
-'  }' 
-'}' 
+{
+  "module": "authentication-module",
+  "version": "1.0.0",
+  "description": "Модуль аутентификации для гибридной интеллектуальной системы",
+  "input_schemas": {
+    "login_request": {
+      "type": "object",
+      "required": ["email", "password"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email пользователя"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 6,
+          "description": "Пароль пользователя"
+        }
+      }
+    },
+    "register_request": {
+      "type": "object",
+      "required": ["email", "password", "full_name"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 8
+        },
+        "full_name": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    }
+  },
+  "output_schemas": {
+    "login_response": {
+      "type": "object",
+      "properties": {
+        "access_token": {
+          "type": "string",
+          "description": "JWT токен доступа"
+        },
+        "token_type": {
+          "type": "string",
+          "enum": ["bearer"],
+          "default": "bearer"
+        },
+        "expires_in": {
+          "type": "integer",
+          "description": "Время жизни токена в секундах"
+        }
+      }
+    },
+    "user_profile": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string"
+        },
+        "full_name": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+  "error_responses": {
+    "401": {
+      "code": 401,
+      "description": "Неверные учетные данные"
+    },
+    "403": {
+      "code": 403,
+      "description": "Доступ запрещен"
+    },
+    "409": {
+      "code": 409,
+      "description": "Пользователь уже существует"
+    }
+  }
+}
