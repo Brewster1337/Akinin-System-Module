@@ -1,94 +1,202 @@
 {
-  "module": "authentication-module",
-  "version": "1.0.0",
-  "description": "Модуль аутентификации для гибридной интеллектуальной системы",
+  "module": "text-vectorization-module",
+  "version": "2.0.0",
+  "description": "Модуль векторизации текста для гибридной интеллектуальной системы",
+  
+  "supported_models": [
+    {
+      "name": "all-MiniLM-L6-v2",
+      "dimension": 384,
+      "max_tokens": 256,
+      "language": "multilingual"
+    },
+    {
+      "name": "all-mpnet-base-v2",
+      "dimension": 768,
+      "max_tokens": 384,
+      "language": "multilingual"
+    },
+    {
+      "name": "paraphrase-multilingual-MiniLM-L12-v2",
+      "dimension": 768,
+      "max_tokens": 128,
+      "language": "ru,en,de,fr,es,it,zh"
+    }
+  ],
+
   "input_schemas": {
-    "login_request": {
+    "vectorize_request": {
       "type": "object",
-      "required": ["email", "password"],
+      "required": ["text"],
       "properties": {
-        "email": {
+        "text": {
           "type": "string",
-          "format": "email",
-          "description": "Email пользователя"
+          "minLength": 1,
+          "maxLength": 10000,
+          "description": "Текст для векторизации"
         },
-        "password": {
+        "model": {
           "type": "string",
-          "minLength": 6,
-          "description": "Пароль пользователя"
+          "enum": ["all-MiniLM-L6-v2", "all-mpnet-base-v2", "paraphrase-multilingual-MiniLM-L12-v2"],
+          "default": "all-MiniLM-L6-v2",
+          "description": "Используемая модель embeddings"
+        },
+        "normalize": {
+          "type": "boolean",
+          "default": true,
+          "description": "Нормализовать вектор (L2)"
+        },
+        "use_cache": {
+          "type": "boolean",
+          "default": true,
+          "description": "Использовать кэш для повторяющихся текстов"
         }
       }
     },
-    "register_request": {
+    
+    "batch_vectorize_request": {
       "type": "object",
-      "required": ["email", "password", "full_name"],
+      "required": ["texts"],
       "properties": {
-        "email": {
-          "type": "string",
-          "format": "email"
+        "texts": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1,
+          "maxItems": 100,
+          "description": "Массив текстов для векторизации"
         },
-        "password": {
+        "model": {
           "type": "string",
-          "minLength": 8
+          "enum": ["all-MiniLM-L6-v2", "all-mpnet-base-v2", "paraphrase-multilingual-MiniLM-L12-v2"],
+          "default": "all-MiniLM-L6-v2"
         },
-        "full_name": {
-          "type": "string",
-          "minLength": 2
-        }
-      }
-    }
-  },
-  "output_schemas": {
-    "login_response": {
-      "type": "object",
-      "properties": {
-        "access_token": {
-          "type": "string",
-          "description": "JWT токен доступа"
-        },
-        "token_type": {
-          "type": "string",
-          "enum": ["bearer"],
-          "default": "bearer"
-        },
-        "expires_in": {
+        "batch_size": {
           "type": "integer",
-          "description": "Время жизни токена в секундах"
+          "minimum": 1,
+          "maximum": 64,
+          "default": 32,
+          "description": "Размер батча для обработки"
         }
       }
     },
-    "user_profile": {
+    
+    "similarity_request": {
       "type": "object",
+      "required": ["text_a", "text_b"],
       "properties": {
-        "id": {
+        "text_a": {"type": "string", "minLength": 1},
+        "text_b": {"type": "string", "minLength": 1},
+        "metric": {
           "type": "string",
-          "format": "uuid"
-        },
-        "email": {
-          "type": "string"
-        },
-        "full_name": {
-          "type": "string"
-        },
-        "created_at": {
-          "type": "string",
-          "format": "date-time"
+          "enum": ["cosine", "euclidean", "dot_product"],
+          "default": "cosine",
+          "description": "Метрика сходства"
         }
       }
     }
   },
-  "error_responses": {
-    "401": {
-      "code": 401,
-      "description": "Неверные учетные данные"
+
+  "output_schemas": {
+    "vectorize_response": {
+      "type": "object",
+      "properties": {
+        "embedding": {
+          "type": "array",
+          "items": {"type": "number"},
+          "description": "Векторное представление текста"
+        },
+        "dimension": {
+          "type": "integer",
+          "description": "Размерность вектора (зависит от модели)"
+        },
+        "model_used": {
+          "type": "string",
+          "description": "Какая модель была использована"
+        },
+        "processing_time_ms": {
+          "type": "number",
+          "description": "Время обработки в миллисекундах"
+        },
+        "cached": {
+          "type": "boolean",
+          "description": "Был ли взят результат из кэша"
+        },
+        "text_hash": {
+          "type": "string",
+          "description": "SHA256 хеш входного текста"
+        }
+      }
     },
-    "403": {
-      "code": 403,
-      "description": "Доступ запрещен"
+    
+    "batch_vectorize_response": {
+      "type": "object",
+      "properties": {
+        "embeddings": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {"type": "number"}
+          },
+          "description": "Массив векторов для каждого текста"
+        },
+        "dimensions": {
+          "type": "array",
+          "items": {"type": "integer"},
+          "description": "Размерность каждого вектора"
+        },
+        "total_time_ms": {"type": "number"},
+        "items_processed": {"type": "integer"}
+      }
     },
-    "409": {
-      "code": 409,
-      "description": "Пользователь уже существует"
+    
+    "similarity_response": {
+      "type": "object",
+      "properties": {
+        "similarity_score": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Косинусное сходство (1 = идентичны, -1 = противоположны)"
+        },
+        "text_a_embedding": {
+          "type": "array",
+          "items": {"type": "number"},
+          "description": "Вектор первого текста"
+        },
+        "text_b_embedding": {
+          "type": "array",
+          "items": {"type": "number"}
+        },
+        "interpretation": {
+          "type": "string",
+          "enum": ["identical", "very_high_similarity", "high_similarity", "moderate_similarity", "low_similarity", "very_low_similarity", "opposite"]
+        }
+      }
+    },
+    
+    "error_response": {
+      "type": "object",
+      "properties": {
+        "error": {"type": "string"},
+        "code": {"type": "integer"},
+        "details": {"type": "string"}
+      }
     }
+  },
+
+  "error_codes": {
+    "400_EMPTY_TEXT": "Text cannot be empty or null",
+    "400_TOO_LONG": "Text exceeds maximum token limit",
+    "400_INVALID_MODEL": "Unsupported embedding model",
+    "429_RATE_LIMIT": "Too many requests, please wait",
+    "500_MODEL_ERROR": "Embedding model failed to load or process",
+    "503_SERVICE_UNAVAILABLE": "Vectorization service is temporarily unavailable"
+  },
+
+  "performance": {
+    "expected_latency_ms": 50,
+    "max_concurrent_requests": 10,
+    "cache_size_mb": 512,
+    "cache_ttl_seconds": 3600
   }
 }
